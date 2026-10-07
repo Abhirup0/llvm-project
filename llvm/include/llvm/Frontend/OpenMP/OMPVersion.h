@@ -18,7 +18,7 @@
 namespace llvm {
 namespace omp {
 struct Version {
-  using value_type = unsigned;
+  using value_type = int;
   constexpr explicit Version(value_type Ver = 0) : V(Ver) {}
   constexpr explicit operator bool() const { return V != 0; }
   constexpr value_type value() const { return V; }

@@ -57,7 +57,7 @@ llvm::omp::Modifiers GetElements(const llvm::omp::descriptor::ModifierSet &desc,
 llvm::directive::VersionRange GetVersionRangeForDirective(
     llvm::omp::Directive dirId) {
   llvm::omp::Version minVer{std::numeric_limits<int>::max()};
-  llvm::omp::Version maxVer{0u};
+  llvm::omp::Version maxVer{0};
   auto &desc = llvm::omp::getDescriptor(dirId);
   for (llvm::omp::Version v : desc.getVersions()) {
     minVer = std::min(minVer, v);

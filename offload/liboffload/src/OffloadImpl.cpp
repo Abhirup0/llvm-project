@@ -1215,8 +1215,12 @@ Error olMemcpy_impl(ol_queue_handle_t Queue, void *DstPtr,
             SrcDevice->Device->dataRetrieve(DstPtr, SrcPtr, Size, QueueImpl))
       return Res;
   } else if (IsSrcHost) {
-    if (auto Res =
-            DstDevice->Device->dataSubmit(DstPtr, SrcPtr, Size, QueueImpl))
+    // Without a queue, the copy isn't ordered with any other work, so the
+    // plugin may write the memory directly.
+    DataSubmitFlagsTy SubmitFlags{};
+    SubmitFlags.DirectWrite = !Queue;
+    if (auto Res = DstDevice->Device->dataSubmit(DstPtr, SrcPtr, Size,
+                                                 QueueImpl, SubmitFlags))
       return Res;
   } else if (SrcDevice->Platform.Plugin == DstDevice->Platform.Plugin &&
              SrcDevice->Platform.Plugin->isDataExchangable(

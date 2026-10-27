@@ -1,6 +1,6 @@
 # REQUIRES: asserts
 # RUN: llc -mtriple=amdgpu9.0a-amd-amdhsa \
-# RUN:   -amdgpu-use-amdgpu-trackers=1 -verify-machineinstrs \
+# RUN:   -amdgpu-use-amdgpu-trackers=1 -vgpr-regalloc=basic -verify-machineinstrs \
 # RUN:   -start-before=register-coalescer \
 # RUN:   -stop-after=amdgpu-rewrite-agpr-copy-mfma \
 # RUN:   -debug-only=amdgpu-rewrite-agpr-copy-mfma -filetype=null %s 2>&1 \
@@ -8,7 +8,8 @@
 
 # This test verifies that when the VGPR-to-AGPR MFMA rewrite pass eliminates
 # spills of reassigned VGPRs, multiple connected live range components are
-# split into separate virtual registers to satisfy the verifier.
+# split into separate virtual registers to satisfy the verifier. The basic
+# register allocator produces the spill pattern more stably than greedy.
 
 # CHECK: Split unspilled interval into {{[0-9]+}} components
 

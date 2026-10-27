@@ -62,6 +62,18 @@ constexpr bool testFlag(OverflowBehavior ob, OverflowBehavior flag) {
   return (ob & flag) != OverflowBehavior::None;
 }
 
+/// Returns the nsw/nuw bits of \p ob as overflow flags. Saturated is not an
+/// overflow flag: the ops that support it carry it as a separate `saturated`
+/// property, which createAdd and createSub set on their own.
+inline OverflowFlags toOverflowFlags(OverflowBehavior ob) {
+  OverflowFlags flags = OverflowFlags::none;
+  if (testFlag(ob, OverflowBehavior::NoSignedWrap))
+    flags = flags | OverflowFlags::nsw;
+  if (testFlag(ob, OverflowBehavior::NoUnsignedWrap))
+    flags = flags | OverflowFlags::nuw;
+  return flags;
+}
+
 class CIRBaseBuilderTy : public mlir::OpBuilder {
 
 public:
@@ -855,9 +867,10 @@ public:
 
   mlir::Value createMul(mlir::Location loc, mlir::Value lhs, mlir::Value rhs,
                         OverflowBehavior ob = OverflowBehavior::None) {
+    assert(!testFlag(ob, OverflowBehavior::Saturated) &&
+           "cir.mul has no saturated form");
     auto op = cir::MulOp::create(*this, loc, lhs, rhs);
-    op.setNoUnsignedWrap(testFlag(ob, OverflowBehavior::NoUnsignedWrap));
-    op.setNoSignedWrap(testFlag(ob, OverflowBehavior::NoSignedWrap));
+    op.setOverflowFlags(toOverflowFlags(ob));
     return op;
   }
   mlir::Value createNSWMul(mlir::Location loc, mlir::Value lhs,
@@ -872,8 +885,7 @@ public:
   mlir::Value createSub(mlir::Location loc, mlir::Value lhs, mlir::Value rhs,
                         OverflowBehavior ob = OverflowBehavior::None) {
     auto op = cir::SubOp::create(*this, loc, lhs, rhs);
-    op.setNoUnsignedWrap(testFlag(ob, OverflowBehavior::NoUnsignedWrap));
-    op.setNoSignedWrap(testFlag(ob, OverflowBehavior::NoSignedWrap));
+    op.setOverflowFlags(toOverflowFlags(ob));
     op.setSaturated(testFlag(ob, OverflowBehavior::Saturated));
     return op;
   }
@@ -891,8 +903,7 @@ public:
   mlir::Value createAdd(mlir::Location loc, mlir::Value lhs, mlir::Value rhs,
                         OverflowBehavior ob = OverflowBehavior::None) {
     auto op = cir::AddOp::create(*this, loc, lhs, rhs);
-    op.setNoUnsignedWrap(testFlag(ob, OverflowBehavior::NoUnsignedWrap));
-    op.setNoSignedWrap(testFlag(ob, OverflowBehavior::NoSignedWrap));
+    op.setOverflowFlags(toOverflowFlags(ob));
     op.setSaturated(testFlag(ob, OverflowBehavior::Saturated));
     return op;
   }

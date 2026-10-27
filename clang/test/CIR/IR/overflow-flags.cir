@@ -1,0 +1,55 @@
+// RUN: cir-opt %s --verify-roundtrip | FileCheck %s
+// RUN: cir-opt %s -mlir-print-op-generic | FileCheck %s --check-prefix=GENERIC
+
+!s32i = !cir.int<s, 32>
+!u32i = !cir.int<u, 32>
+
+module {
+  // CHECK-LABEL: cir.func @add
+  cir.func @add(%a: !s32i, %b: !s32i) {
+    // CHECK: cir.add %{{.*}}, %{{.*}} : !s32i
+    %0 = cir.add %a, %b : !s32i
+    // CHECK: cir.add nsw %{{.*}}, %{{.*}} : !s32i
+    %1 = cir.add nsw %a, %b : !s32i
+    // CHECK: cir.add nuw %{{.*}}, %{{.*}} : !s32i
+    %2 = cir.add nuw %a, %b : !s32i
+    // CHECK: cir.add nsw nuw %{{.*}}, %{{.*}} : !s32i
+    %3 = cir.add nsw nuw %a, %b : !s32i
+    // CHECK: cir.add nsw nuw %{{.*}}, %{{.*}} : !s32i
+    %4 = cir.add nuw nsw %a, %b : !s32i
+    // CHECK: cir.add sat %{{.*}}, %{{.*}} : !s32i
+    %5 = cir.add sat %a, %b : !s32i
+    cir.return
+  }
+
+  // CHECK-LABEL: cir.func @sub
+  cir.func @sub(%a: !u32i, %b: !u32i) {
+    // CHECK: cir.sub nuw %{{.*}}, %{{.*}} : !u32i
+    %0 = cir.sub nuw %a, %b : !u32i
+    // CHECK: cir.sub nsw nuw %{{.*}}, %{{.*}} : !u32i
+    %1 = cir.sub nuw nsw %a, %b : !u32i
+    // CHECK: cir.sub sat %{{.*}}, %{{.*}} : !u32i
+    %2 = cir.sub sat %a, %b : !u32i
+    cir.return
+  }
+
+  // CHECK-LABEL: cir.func @mul
+  cir.func @mul(%a: !s32i, %b: !s32i) {
+    // CHECK: cir.mul %{{.*}}, %{{.*}} : !s32i
+    %0 = cir.mul %a, %b : !s32i
+    // CHECK: cir.mul nsw %{{.*}}, %{{.*}} : !s32i
+    %1 = cir.mul nsw %a, %b : !s32i
+    // CHECK: cir.mul nsw nuw %{{.*}}, %{{.*}} : !s32i
+    %2 = cir.mul nuw nsw %a, %b : !s32i
+    cir.return
+  }
+}
+
+// The flags are stored as a single bit-enum property.
+// GENERIC-LABEL: sym_name = "add"
+// GENERIC: "cir.add"(%{{.*}}, %{{.*}}) <{overflow_flags = 0 : i32, saturated = false}>
+// GENERIC: "cir.add"(%{{.*}}, %{{.*}}) <{overflow_flags = 1 : i32, saturated = false}>
+// GENERIC: "cir.add"(%{{.*}}, %{{.*}}) <{overflow_flags = 2 : i32, saturated = false}>
+// GENERIC: "cir.add"(%{{.*}}, %{{.*}}) <{overflow_flags = 3 : i32, saturated = false}>
+// GENERIC: "cir.add"(%{{.*}}, %{{.*}}) <{overflow_flags = 3 : i32, saturated = false}>
+// GENERIC: "cir.add"(%{{.*}}, %{{.*}}) <{overflow_flags = 0 : i32, saturated}>

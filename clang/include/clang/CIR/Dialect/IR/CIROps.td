@@ -2831,6 +2831,11 @@ class CIR_BinaryOp<string mnemonic, Type type, list<Trait> traits = [],
   }];
 }
 
+// Integer overflow flags (nsw/nuw) stored as a single bit enum. They are
+// printed as bare `nsw` and `nuw` keywords, as in LLVM IR.
+defvar CIR_OverflowFlagsProp =
+    DefaultValuedProp<EnumProp<CIR_OverflowFlags>, "cir::OverflowFlags::none">;
+
 // Base class for binary ops that support integer overflow flags (nsw/nuw)
 // and saturated arithmetic.
 class CIR_BinaryOpWithOverflowFlags<string mnemonic, Type type,
@@ -2839,14 +2844,12 @@ class CIR_BinaryOpWithOverflowFlags<string mnemonic, Type type,
 {
   let arguments = (ins
     type:$lhs, type:$rhs,
-    UnitProp:$no_signed_wrap,
-    UnitProp:$no_unsigned_wrap,
+    CIR_OverflowFlagsProp:$overflow_flags,
     UnitProp:$saturated
   );
 
   let assemblyFormat = [{
-    (`nsw` $no_signed_wrap^)?
-    (`nuw` $no_unsigned_wrap^)?
+    custom<OverflowFlags>($overflow_flags)
     (`sat` $saturated^)?
     $lhs `,` $rhs `:` type($lhs) attr-dict
   }];
@@ -2866,9 +2869,9 @@ def CIR_AddOp
     operands and the result must have the same integer, vector-of-integer or
     matrix-of-integer type.
 
-    The optional `nsw` (no signed wrap) and `nuw` (no unsigned wrap) unit
-    attributes indicate that the result is poison if signed or unsigned
-    overflow occurs, respectively. The optional `sat` (saturated) attribute
+    The optional `nsw` (no signed wrap) and `nuw` (no unsigned wrap) flags
+    indicate that the result is poison if signed or unsigned overflow occurs,
+    respectively; both may be given. The optional `sat` (saturated) flag
     clamps the result to the type's representable range instead of wrapping.
     The `nsw`/`nuw` flags and `sat` are mutually exclusive.
 
@@ -2877,7 +2880,7 @@ def CIR_AddOp
     ```
     %0 = cir.add %a, %b : !s32i
     %1 = cir.add nsw %a, %b : !s32i
-    %2 = cir.add nuw %a, %b : !u32i
+    %2 = cir.add nsw nuw %a, %b : !s32i
     %3 = cir.add sat %a, %b : !s32i
     %4 = cir.add %va, %vb : !cir.vector<4 x !s32i>
     %5 = cir.add %ma, %mb : !cir.matrix<3 x 3 x !s32i>
@@ -2897,9 +2900,9 @@ def CIR_SubOp
     operands and the result must have the same integer, vector-of-integer or
     matrix-of-integer type.
 
-    The optional `nsw` (no signed wrap) and `nuw` (no unsigned wrap) unit
-    attributes indicate that the result is poison if signed or unsigned
-    overflow occurs, respectively. The optional `sat` (saturated) attribute
+    The optional `nsw` (no signed wrap) and `nuw` (no unsigned wrap) flags
+    indicate that the result is poison if signed or unsigned overflow occurs,
+    respectively; both may be given. The optional `sat` (saturated) flag
     clamps the result to the type's representable range. The `nsw`/`nuw`
     flags and `sat` are mutually exclusive.
 
@@ -2926,16 +2929,16 @@ def CIR_MulOp : CIR_BinaryOp<"mul", CIR_AnyIntOrVecOrMatrixOfIntType> {
     operands and the result must have the same integer or vector-of-integer
     or matrix-of-integer type.
 
-    The optional `nsw` (no signed wrap) and `nuw` (no unsigned wrap) unit
-    attributes indicate that the result is poison if signed or unsigned
-    overflow occurs, respectively.
+    The optional `nsw` (no signed wrap) and `nuw` (no unsigned wrap) flags
+    indicate that the result is poison if signed or unsigned overflow occurs,
+    respectively; both may be given.
 
     Example:
 
     ```
     %0 = cir.mul %a, %b : !s32i
     %1 = cir.mul nsw %a, %b : !s32i
-    %2 = cir.mul nuw %a, %b : !u32i
+    %2 = cir.mul nsw nuw %a, %b : !u32i
     %3 = cir.mul %va, %vb : !cir.vector<4 x !s32i>
     %4 = cir.mul %ma, %mb : !cir.matrix<3 x 3 x !s32i>
     ```
@@ -2944,13 +2947,11 @@ def CIR_MulOp : CIR_BinaryOp<"mul", CIR_AnyIntOrVecOrMatrixOfIntType> {
   let arguments = (ins
     CIR_AnyIntOrVecOrMatrixOfIntType:$lhs,
     CIR_AnyIntOrVecOrMatrixOfIntType:$rhs,
-    UnitProp:$no_signed_wrap,
-    UnitProp:$no_unsigned_wrap
+    CIR_OverflowFlagsProp:$overflow_flags
   );
 
   let assemblyFormat = [{
-    (`nsw` $no_signed_wrap^)?
-    (`nuw` $no_unsigned_wrap^)?
+    custom<OverflowFlags>($overflow_flags)
     $lhs `,` $rhs `:` type($lhs) attr-dict
   }];
 }

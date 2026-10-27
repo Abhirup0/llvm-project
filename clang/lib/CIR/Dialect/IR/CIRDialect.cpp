@@ -504,6 +504,35 @@ static void printOmittedTerminatorRegion(mlir::OpAsmPrinter &printer,
                       /*printBlockTerminators=*/!omitRegionTerm(region));
 }
 
+// Parses the overflow flags as optional bare `nsw` and `nuw` keywords, in any
+// order and each at most once.
+static mlir::ParseResult parseOverflowFlags(mlir::OpAsmParser &parser,
+                                            cir::OverflowFlags &flags) {
+  flags = cir::OverflowFlags::none;
+  while (true) {
+    llvm::SMLoc loc = parser.getCurrentLocation();
+    cir::OverflowFlags flag;
+    if (succeeded(parser.parseOptionalKeyword("nsw")))
+      flag = cir::OverflowFlags::nsw;
+    else if (succeeded(parser.parseOptionalKeyword("nuw")))
+      flag = cir::OverflowFlags::nuw;
+    else
+      return success();
+    if (cir::bitEnumContainsAll(flags, flag))
+      return parser.emitError(loc, "duplicate '")
+             << cir::stringifyOverflowFlags(flag) << "' flag";
+    flags = flags | flag;
+  }
+}
+
+static void printOverflowFlags(mlir::OpAsmPrinter &printer, mlir::Operation *,
+                               cir::OverflowFlags flags) {
+  if (cir::bitEnumContainsAll(flags, cir::OverflowFlags::nsw))
+    printer << " nsw";
+  if (cir::bitEnumContainsAll(flags, cir::OverflowFlags::nuw))
+    printer << " nuw";
+}
+
 mlir::OptionalParseResult
 parseGlobalMemorySpace(mlir::AsmParser &p,
                        mlir::ptr::MemorySpaceAttrInterface &attr);
@@ -3428,14 +3457,14 @@ mlir::LogicalResult cir::FuncOp::verify() {
 // sat needs to be verified.
 
 LogicalResult cir::AddOp::verify() {
-  if (getSaturated() && (getNoSignedWrap() || getNoUnsignedWrap()))
+  if (getSaturated() && getOverflowFlags() != cir::OverflowFlags::none)
     return emitOpError()
            << "the nsw/nuw flags and the saturated flag are mutually exclusive";
   return mlir::success();
 }
 
 LogicalResult cir::SubOp::verify() {
-  if (getSaturated() && (getNoSignedWrap() || getNoUnsignedWrap()))
+  if (getSaturated() && getOverflowFlags() != cir::OverflowFlags::none)
     return emitOpError()
            << "the nsw/nuw flags and the saturated flag are mutually exclusive";
   return mlir::success();

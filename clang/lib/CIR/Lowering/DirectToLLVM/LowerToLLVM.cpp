@@ -3768,11 +3768,13 @@ static bool isIntTypeUnsigned(mlir::Type type) {
 
 template <typename BinOp>
 static mlir::LLVM::IntegerOverflowFlags intOverflowFlag(BinOp op) {
-  if (op.getNoUnsignedWrap())
-    return mlir::LLVM::IntegerOverflowFlags::nuw;
-  if (op.getNoSignedWrap())
-    return mlir::LLVM::IntegerOverflowFlags::nsw;
-  return mlir::LLVM::IntegerOverflowFlags::none;
+  static_assert(
+      llvm::to_underlying(cir::OverflowFlags::nsw) ==
+              llvm::to_underlying(mlir::LLVM::IntegerOverflowFlags::nsw) &&
+          llvm::to_underlying(cir::OverflowFlags::nuw) ==
+              llvm::to_underlying(mlir::LLVM::IntegerOverflowFlags::nuw),
+      "cir::OverflowFlags must match mlir::LLVM::IntegerOverflowFlags");
+  return static_cast<mlir::LLVM::IntegerOverflowFlags>(op.getOverflowFlags());
 }
 
 /// Lower an arithmetic op that supports saturation, overflow flags, and an FP
